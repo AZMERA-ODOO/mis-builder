@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from odoo import fields
 from odoo.exceptions import UserError
-from odoo.models import expression
+from odoo.osv import expression
 from odoo.tools.float_utils import float_is_zero
 from odoo.tools.safe_eval import datetime, dateutil, safe_eval, time
 
