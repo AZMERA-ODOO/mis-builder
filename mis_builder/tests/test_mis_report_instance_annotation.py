@@ -75,6 +75,27 @@ class TestMisReportInstanceAnnotation(TransactionCase):
             )
         )
 
+    def test_annotation_lookup_index_is_created(self):
+        annotation_model = self.env["mis.report.instance.annotation"]
+        annotation_model.init()
+        annotation_model.init()
+        self.env.cr.execute(
+            """
+                SELECT indexname
+                FROM pg_indexes
+                WHERE tablename = %s
+                  AND indexname = %s
+            """,
+            (
+                "mis_report_instance_annotation",
+                "mis_report_instance_annotation_period_id_kpi_id_subkpi_id_idx",
+            ),
+        )
+        self.assertEqual(
+            self.env.cr.fetchall(),
+            [("mis_report_instance_annotation_period_id_kpi_id_subkpi_id_idx",)],
+        )
+
     def test_adding_note(self):
         notes = self.report_instance.get_notes_by_cell_id()
 
