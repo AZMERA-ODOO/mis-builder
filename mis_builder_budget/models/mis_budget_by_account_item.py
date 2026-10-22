@@ -44,20 +44,16 @@ class MisBudgetByAccountItem(models.Model):
         check_company=True,
     )
 
-    _sql_constraints = [
-        (
-            "credit_debit1",
-            "CHECK (credit*debit=0)",
-            "Wrong credit or debit value in budget item! "
-            "Credit or debit should be zero.",
-        ),
-        (
-            "credit_debit2",
-            "CHECK (credit+debit>=0)",
-            "Wrong credit or debit value in budget item! "
-            "Credit and debit should be positive.",
-        ),
-    ]
+    _credit_debit1 = models.Constraint(
+        "CHECK (credit*debit=0)",
+        "Wrong credit or debit value in budget item! "
+        "Credit or debit should be zero.",
+    )
+    _credit_debit2 = models.Constraint(
+        "CHECK (credit+debit>=0)",
+        "Wrong credit or debit value in budget item! "
+        "Credit and debit should be positive.",
+    )
 
     @api.depends("debit", "credit")
     def _compute_balance(self):

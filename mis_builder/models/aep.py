@@ -7,7 +7,7 @@ from collections import defaultdict
 
 from odoo import fields
 from odoo.exceptions import UserError
-from odoo.osv import expression
+from odoo.fields import Domain
 from odoo.tools.float_utils import float_is_zero
 from odoo.tools.safe_eval import datetime, dateutil, safe_eval, time
 
@@ -184,7 +184,7 @@ class AccountingExpressionProcessor:
                 elems.append([("code", "=like", account_code)])
             else:
                 elems.append([("code", "=", account_code)])
-        return tuple(expression.OR(elems))
+        return tuple(Domain.OR(elems))
 
     def _parse_match_object(self, mo):
         """Split a match object corresponding to an accounting variable
@@ -285,7 +285,7 @@ class AccountingExpressionProcessor:
                 # separately.
                 account_ids = []
                 for company in self.companies:
-                    acc_domain_with_company = expression.AND(
+                    acc_domain_with_company = Domain.AND(
                         [acc_domain, [("company_ids", "=", company.id)]]
                     )
                     account_ids += (
@@ -349,7 +349,7 @@ class AccountingExpressionProcessor:
         assert aml_domains
         # TODO we could do this for more precision:
         #      AND(OR(aml_domains[mode]), date_domain[mode]) for each mode
-        return expression.OR(aml_domains) + expression.OR(date_domain_by_mode.values())
+        return Domain.OR(aml_domains) + Domain.OR(date_domain_by_mode.values())
 
     def get_aml_domain_for_dates(self, date_from, date_to, mode):
         if mode == self.MODE_VARIATION:

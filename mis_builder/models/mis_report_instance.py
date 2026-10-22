@@ -289,19 +289,18 @@ class MisReportInstancePeriod(models.Model):
 
     _order = "sequence, id"
 
-    _sql_constraints = [
-        ("duration", "CHECK (duration>0)", "Wrong duration, it must be positive!"),
-        (
-            "normalize_factor",
-            "CHECK (normalize_factor>0)",
-            "Wrong normalize factor, it must be positive!",
-        ),
-        (
-            "name_unique",
-            "unique(name, report_instance_id)",
-            "Period name should be unique by report",
-        ),
-    ]
+    _duration = models.Constraint(
+        "CHECK (duration>0)",
+        "Wrong duration, it must be positive!",
+    )
+    _normalize_factor = models.Constraint(
+        "CHECK (normalize_factor>0)",
+        "Wrong normalize factor, it must be positive!",
+    )
+    _name_unique = models.Constraint(
+        "unique(name, report_instance_id)",
+        "Period name should be unique by report",
+    )
 
     @api.depends("source", "report_instance_id.report_id.move_lines_source")
     def _compute_source_aml_model_id(self):
