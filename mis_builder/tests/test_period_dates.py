@@ -1,6 +1,7 @@
 # Copyright 2017 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 from odoo import fields
 
@@ -15,6 +16,7 @@ from ..models.mis_report_instance import (
 from .common import assert_matrix
 
 
+@tagged("post_install", "-at_install")
 class TestPeriodDates(common.TransactionCase):
     def setUp(self):
         super().setUp()

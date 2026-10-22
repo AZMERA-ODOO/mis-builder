@@ -3,6 +3,7 @@
 
 import datetime
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 from odoo import Command, fields
 from odoo.tools.safe_eval import safe_eval
@@ -11,6 +12,7 @@ from ..models.accounting_none import AccountingNone
 from ..models.aep import AccountingExpressionProcessor as AEP
 
 
+@tagged("post_install", "-at_install")
 class TestMultiCompanyAEP(common.TransactionCase):
     def setUp(self):
         super().setUp()

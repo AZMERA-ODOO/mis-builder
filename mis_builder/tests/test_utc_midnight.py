@@ -1,11 +1,13 @@
 # Copyright 2014 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 
 from ..models.mis_report import _utc_midnight
 
 
+@tagged("post_install", "-at_install")
 class TestUtcMidnight(common.TransactionCase):
     def test_utc_midnight(self):
         date_to_convert = "2014-07-05"

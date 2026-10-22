@@ -30,6 +30,30 @@
     max-width: 100% !important;
 }
 
+.oe_mis_builder_table {
+    max-height: calc(100vh - 280px);
+    overflow: auto;
+
+    .mis_builder {
+        margin-bottom: 0;
+
+        .mis_builder_collabel {
+            text-align: right;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 3;
+            background-color: var(--o-view-background-color, #ffffff);
+        }
+
+        thead th {
+            background-color: var(--o-view-background-color, #ffffff);
+        }
+    }
+}
+
 .oe_mis_builder_cp {
     display: flex;
     flex-direction: row;

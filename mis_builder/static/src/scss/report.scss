@@ -1,51 +1,94 @@
+.article,
+.article .page {
+    width: 100% !important;
+}
+
+html,
+body,
+body.o_body_html.container {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+#wrapwrap,
+#wrapwrap > main {
+    width: 100% !important;
+}
+
 .mis_table {
     display: table;
-    width: 100%;
+    width: 1000px !important;
+    max-width: none;
+    border-collapse: collapse;
     table-layout: fixed;
+    font-size: 9px;
+    color: #111827;
 
     .mis_row {
-        display: table-row;
         page-break-inside: avoid;
-        border-color: grey;
-        border-bottom: 1px solid lightGrey;
+        border-bottom: 1px solid #d1d5db;
     }
 
     .mis_cell {
-        display: table-cell;
+        padding: 4px 6px;
         page-break-inside: avoid;
+        vertical-align: middle;
 
         &.mis_collabel {
             font-weight: bold;
-            background-color: #f0f0f0;
+            background-color: #e5e7eb;
             text-align: center;
         }
 
         &.mis_rowlabel {
-            text-align: left;
-            /* white-space: nowrap; */
+            text-align: left !important;
+            width: 42%;
         }
 
         &.mis_amount {
             text-align: right;
+            white-space: nowrap;
         }
     }
 
-    &,
-    .mis_row {
-        border-left: 0;
-        border-right: 0;
-        text-align: left;
-        padding: 2px 3px;
-        border-collapse: collapse;
+    .mis_column_header {
+        white-space: nowrap;
     }
 }
 
 .mis_thead {
     display: table-header-group;
+
+    .mis_row:first-child .mis_collabel {
+        background-color: #374151;
+        color: #ffffff;
+    }
 }
 
 .mis_tbody {
     display: table-row-group;
+}
+
+.mis_report_title {
+    color: #111827;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
+.mis_report_filters {
+    color: #4b5563;
+    font-size: 9px;
+    margin-bottom: 12px;
+}
+
+.mis_report_period {
+    font-weight: 600;
+    margin-bottom: 3px;
+}
+
+.mis_negative {
+    color: #991b1b;
 }
 
 .oe_mis_builder_footnote {

@@ -44,7 +44,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="o_list_renderer o_renderer table-responsive">
+                <div class="o_list_renderer o_renderer table-responsive oe_mis_builder_table">
                     <table
                         class="o_list_table table table-sm table-hover table-striped mis_builder"
                     >

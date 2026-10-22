@@ -1,11 +1,13 @@
 # Copyright 2025 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 from odoo_test_helper import FakeModelLoader
 
 from odoo.tests import TransactionCase
 
 
+@tagged("post_install", "-at_install")
 class TestProrataReadGroup(TransactionCase):
     @classmethod
     def setUpClass(cls):

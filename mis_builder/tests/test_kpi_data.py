@@ -1,6 +1,7 @@
 # Copyright 2017 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 from odoo_test_helper import FakeModelLoader
 
 from odoo.tests.common import TransactionCase
@@ -8,6 +9,7 @@ from odoo.tests.common import TransactionCase
 from ..models.mis_kpi_data import ACC_AVG, ACC_SUM
 
 
+@tagged("post_install", "-at_install")
 class TestKpiData(TransactionCase):
     @classmethod
     def setUpClass(cls):

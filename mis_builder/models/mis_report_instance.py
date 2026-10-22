@@ -9,6 +9,7 @@ import logging
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
+from odoo.fields import Domain
 from odoo.exceptions import UserError, ValidationError
 
 from .aep import AccountingExpressionProcessor as AEP
@@ -289,19 +290,18 @@ class MisReportInstancePeriod(models.Model):
 
     _order = "sequence, id"
 
-    _sql_constraints = [
-        ("duration", "CHECK (duration>0)", "Wrong duration, it must be positive!"),
-        (
-            "normalize_factor",
-            "CHECK (normalize_factor>0)",
-            "Wrong normalize factor, it must be positive!",
-        ),
-        (
-            "name_unique",
-            "unique(name, report_instance_id)",
-            "Period name should be unique by report",
-        ),
-    ]
+    _duration = models.Constraint(
+        "CHECK (duration>0)",
+        "Wrong duration, it must be positive!",
+    )
+    _normalize_factor = models.Constraint(
+        "CHECK (normalize_factor>0)",
+        "Wrong normalize factor, it must be positive!",
+    )
+    _name_unique = models.Constraint(
+        "unique(name, report_instance_id)",
+        "Period name should be unique by report",
+    )
 
     @api.depends("source", "report_instance_id.report_id.move_lines_source")
     def _compute_source_aml_model_id(self):
@@ -692,6 +692,38 @@ class MisReportInstance(models.Model):
         date_format = lang.date_format
         return datetime.datetime.strftime(fields.Date.from_string(date), date_format)
 
+    def get_export_period_description(self):
+        """Return a concise period description for printed/exported reports."""
+        self.ensure_one()
+        periods = self.period_ids.filtered(lambda period: period.date_from and period.date_to)
+        ranges = []
+        for period in periods:
+            date_range = (
+                self._format_date(period.date_from),
+                self._format_date(period.date_to),
+            )
+            if date_range not in [item[0] for item in ranges]:
+                ranges.append((date_range, period.name))
+        if not ranges:
+            return ""
+        if len(ranges) == 1:
+            date_from, date_to = ranges[0][0]
+            return self.env._(
+                "For the period %(date_from)s to %(date_to)s",
+                date_from=date_from,
+                date_to=date_to,
+            )
+        descriptions = [
+            self.env._(
+                "%(name)s: %(date_from)s to %(date_to)s",
+                name=name,
+                date_from=date_range[0],
+                date_to=date_range[1],
+            )
+            for date_range, name in ranges
+        ]
+        return self.env._("Periods: %(periods)s", periods="; ".join(descriptions))
+
     @api.depends("date_from")
     def _compute_comparison_mode(self):
         for instance in self:
@@ -980,7 +1012,7 @@ class MisReportInstance(models.Model):
                 period.date_to,
                 account_id,
             )
-            domain.extend(period._get_additional_move_line_filter())
+            domain = list(Domain(domain) + Domain(period._get_additional_move_line_filter()))
             views = self._get_drilldown_model_views(period.source_aml_model_name)
             return {
                 "name": self._get_drilldown_action_name(arg),
@@ -1004,9 +1036,9 @@ class MisReportInstance(models.Model):
 
         if account_id:
             account = self.env[self.report_id.account_model].browse(account_id)
-            return f"{kpi.description} - {account.display_name} - {period.display_name}"
+            return f"{kpi.description} - {account.display_name} - {period.name}"
         else:
-            return f"{kpi.description} - {period.display_name}"
+            return f"{kpi.description} - {period.name}"
 
     def _get_annotation_context(self):
         """Return the context used to filter annotation linked to this instance."""

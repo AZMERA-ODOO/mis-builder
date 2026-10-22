@@ -467,9 +467,14 @@ class KpiMatrix:
         self._account_names = {a.id: self._get_account_name(a) for a in accounts}
 
     def _get_account_name(self, account):
-        result = f"{account.code} {account.name}"
+        company = False
+        if hasattr(account, "company_ids") and len(account.company_ids) == 1:
+            company = account.company_ids[0]
+        code = account.with_company(company).code if company else account.code
+        result = f"{code} {account.name}" if code else account.name
         if self._multi_company:
-            result = f"{result} [{account.company_id.name}]"
+            if company:
+                result = f"{result} [{company.name}]"
         return result
 
     def get_account_name(self, account_id):
@@ -497,6 +502,7 @@ class KpiMatrix:
                 )
 
         body = []
+        detail_row_indexes = {}
         for row in self.iter_rows():
             if (
                 row.style_props.hide_empty and row.is_empty()
@@ -531,6 +537,23 @@ class KpiMatrix:
                     if cell.drilldown_arg:
                         col_data["drilldown_arg"] = cell.drilldown_arg
                     row_data["cells"].append(col_data)
+
+            # In a multi-company report, the same coded account exists as a
+            # separate account record for each company. Keep those account
+            # records on one visual row so the company columns provide the
+            # comparison. Each cell retains its own account drilldown.
+            if row.account_id and self._multi_company:
+                group_label = row.label.rsplit(" [", 1)[0]
+                group_key = (row.parent_row.kpi.id, group_label)
+                row_data["label"] = group_label
+                existing_index = detail_row_indexes.get(group_key)
+                if existing_index is not None:
+                    existing = body[existing_index]
+                    for index, cell in enumerate(row_data["cells"]):
+                        if cell and not existing["cells"][index]:
+                            existing["cells"][index] = cell
+                    continue
+                detail_row_indexes[group_key] = len(body)
             body.append(row_data)
 
         return {"header": header, "body": body}

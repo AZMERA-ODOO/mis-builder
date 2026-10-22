@@ -213,7 +213,7 @@
         </field>
     </record>
     <record model="ir.actions.act_window" id="mis_report_instance_view_action">
-        <field name="name">MIS Reports</field>
+        <field name="name">Reports</field>
         <field name="view_id" ref="mis_report_instance_view_list" />
         <field name="res_model">mis.report.instance</field>
         <field name="view_mode">list,form</field>
@@ -223,14 +223,14 @@
     <menuitem
         id="mis_report_finance_menu"
         parent="account.menu_finance_reports"
-        name="MIS Reporting"
+        name="Custom Reports"
         sequence="101"
         groups="account.group_account_manager"
     />
     <menuitem
         id="mis_report_instance_view_menu"
         parent="mis_report_finance_menu"
-        name="MIS Reports"
+        name="Reports"
         action="mis_report_instance_view_action"
         sequence="10"
     />

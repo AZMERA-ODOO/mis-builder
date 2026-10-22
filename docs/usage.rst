@@ -350,7 +350,7 @@ Data sources for columns
 
 MIS Budgets
 -----------
-Menu accessible here: `Accounting > Reports > MIS Reports > MIS Budget`
+Menu accessible here: `Accounting > Accounting > MIS Budgets`
 
 This module lets you create budgets for any MIS report. Several budgets can be created
 for a given report template (ie one budget per year). Budget figures are provided at the

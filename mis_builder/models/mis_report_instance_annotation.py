@@ -63,11 +63,9 @@ class MisReportInstanceAnnotation(models.Model):
             .browse(instance_id)
             ._get_annotation_context()
         )
-        annotation = fields.first(
-            annotations.filtered(
-                lambda rec: rec.annotation_context == annotation_context
-            )
-        )
+        annotation = annotations.filtered(
+            lambda rec: rec.annotation_context == annotation_context
+        )[:1]
         return annotation
 
     @api.model

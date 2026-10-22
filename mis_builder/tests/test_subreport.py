@@ -1,6 +1,7 @@
 # Copyright 2020 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 from odoo.tests.common import TransactionCase
 
 from odoo.addons.mis_builder.models.expression_evaluator import ExpressionEvaluator
@@ -10,6 +11,7 @@ from odoo.addons.mis_builder.models.mis_report_subreport import (
 )
 
 
+@tagged("post_install", "-at_install")
 class TestMisSubreport(TransactionCase):
     @classmethod
     def setUpClass(cls):
