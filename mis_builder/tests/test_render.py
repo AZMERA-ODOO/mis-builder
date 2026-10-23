@@ -1,6 +1,7 @@
 # Copyright 2016 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 
 from ..models.accounting_none import AccountingNone
@@ -8,6 +9,7 @@ from ..models.data_error import DataError
 from ..models.mis_report_style import CMP_DIFF, CMP_PCT, TYPE_NUM, TYPE_PCT, TYPE_STR
 
 
+@tagged("post_install", "-at_install")
 class TestRendering(common.TransactionCase):
     def setUp(self):
         super().setUp()
@@ -35,6 +37,14 @@ class TestRendering(common.TransactionCase):
             return (round(r[0], 8), r[1])
         else:
             return r
+
+    def _description_text(self):
+        description = self.style.description
+        if hasattr(description, "unescape"):
+            description = description.unescape()
+        if description.startswith("<div>") and description.endswith("</div>"):
+            return description[5:-6]
+        return description
 
     def test_render(self):
         self.assertEqual("1", self._render(1))
@@ -322,17 +332,17 @@ class TestRendering(common.TransactionCase):
         )
 
     def test_description(self):
-        self.assertEqual(self.style.description.unescape(), "")
+        self.assertEqual(self._description_text(), "")
 
         self.style.dp_inherit = False
         self.style.dp = 4
-        self.assertEqual(self.style.description.unescape(), "Rounding : 4")
+        self.assertEqual(self._description_text(), "Rounding : 4")
         self.style.dp_inherit = True
 
         self.style.color_inherit = False
         self.style.color = "red"
         self.assertEqual(
-            self.style.description.unescape(),
+            self._description_text(),
             'Text color : <span style="background-color: red;'
             " width: 15px; height: 15px; display: inline-block;"
             ' border: 1px black solid; border-radius: 5px;"></span>',
@@ -341,4 +351,4 @@ class TestRendering(common.TransactionCase):
 
         self.style.prefix_inherit = False
         self.style.prefix = "$"
-        self.assertEqual(self.style.description.unescape(), "Prefix : '<code>$</code>'")
+        self.assertEqual(self._description_text(), "Prefix : '<code>$</code>'")

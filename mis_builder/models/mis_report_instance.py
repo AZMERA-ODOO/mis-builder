@@ -9,7 +9,8 @@ import logging
 from dateutil.relativedelta import relativedelta
 
 from odoo import api, fields, models
-from odoo.exceptions import UserError, ValidationError
+from odoo.fields import Domain
+from odoo.exceptions import MissingError, UserError, ValidationError
 
 from .aep import AccountingExpressionProcessor as AEP
 from .expression_evaluator import ExpressionEvaluator
@@ -56,8 +57,13 @@ class MisReportInstancePeriodSum(models.Model):
 
     @api.constrains("period_id", "period_to_sum_id")
     def _check_period_to_sum(self):
-        for rec in self:
-            if rec.period_id == rec.period_to_sum_id:
+        for rec in self.exists():
+            try:
+                period_id = rec.period_id
+                period_to_sum_id = rec.period_to_sum_id
+            except MissingError:
+                continue
+            if period_id == period_to_sum_id:
                 raise ValidationError(
                     self.env._(
                         "You cannot sum period %s with itself.", rec.period_id.name
@@ -331,9 +337,13 @@ class MisReportInstancePeriod(models.Model):
     @api.constrains("source_aml_model_id")
     def _check_source_aml_model_id(self):
         for record in self:
-            if record.source_aml_model_id:
+            try:
+                source_aml_model_id = record.source_aml_model_id
+            except MissingError:
+                continue
+            if source_aml_model_id:
                 record_model = (
-                    record.source_aml_model_id.sudo()
+                    source_aml_model_id.sudo()
                     .field_id.filtered(lambda r: r.name == "account_id")
                     .relation
                 )
@@ -417,9 +427,14 @@ class MisReportInstancePeriod(models.Model):
 
     @api.constrains("mode", "source")
     def _check_mode_source(self):
-        for rec in self:
-            if rec.source in (SRC_ACTUALS, SRC_ACTUALS_ALT):
-                if rec.mode == MODE_NONE:
+        for rec in self.exists():
+            try:
+                source = rec.source
+                mode = rec.mode
+            except MissingError:
+                continue
+            if source in (SRC_ACTUALS, SRC_ACTUALS_ALT):
+                if mode == MODE_NONE:
                     raise DateFilterRequired(
                         self.env._(
                             "A date filter is mandatory for this source "
@@ -427,8 +442,8 @@ class MisReportInstancePeriod(models.Model):
                             rec.name,
                         )
                     )
-            elif rec.source in (SRC_SUMCOL, SRC_CMPCOL):
-                if rec.mode != MODE_NONE:
+            elif source in (SRC_SUMCOL, SRC_CMPCOL):
+                if mode != MODE_NONE:
                     raise DateFilterForbidden(
                         self.env._(
                             "No date filter is allowed for this source "
@@ -439,22 +454,28 @@ class MisReportInstancePeriod(models.Model):
 
     @api.constrains("source", "source_cmpcol_from_id", "source_cmpcol_to_id")
     def _check_source_cmpcol(self):
-        for rec in self:
-            if rec.source == SRC_CMPCOL:
-                if not rec.source_cmpcol_from_id or not rec.source_cmpcol_to_id:
+        for rec in self.exists():
+            try:
+                source = rec.source
+                source_cmpcol_from_id = rec.source_cmpcol_from_id
+                source_cmpcol_to_id = rec.source_cmpcol_to_id
+            except MissingError:
+                continue
+            if source == SRC_CMPCOL:
+                if not source_cmpcol_from_id or not source_cmpcol_to_id:
                     raise ValidationError(
                         self.env._(
                             "Please provide both columns to compare in %s.", rec.name
                         )
                     )
-                if rec.source_cmpcol_from_id == rec or rec.source_cmpcol_to_id == rec:
+                if source_cmpcol_from_id == rec or source_cmpcol_to_id == rec:
                     raise ValidationError(
                         self.env._("Column %s cannot be compared to itrec.", rec.name)
                     )
                 if (
-                    rec.source_cmpcol_from_id.report_instance_id
+                    source_cmpcol_from_id.report_instance_id
                     != rec.report_instance_id
-                    or rec.source_cmpcol_to_id.report_instance_id
+                    or source_cmpcol_to_id.report_instance_id
                     != rec.report_instance_id
                 ):
                     raise ValidationError(
@@ -488,7 +509,9 @@ class MisReportInstance(models.Model):
             elif record.date:
                 record.pivot_date = record.date
             else:
-                record.pivot_date = fields.Date.context_today(record)
+                record.pivot_date = fields.Date.context_today(
+                    record.with_context(tz=record.env.context.get("tz") or "UTC")
+                )
 
     _name = "mis.report.instance"
     _description = "MIS Report Instance"
@@ -687,9 +710,46 @@ class MisReportInstance(models.Model):
     def _format_date(self, date):
         # format date following user language
         lang_model = self.env["res.lang"]
-        lang = lang_model._lang_get(self.env.user.lang)
+        lang_code = self.env.context.get("lang") or "en_US"
+        lang = lang_model._lang_get(lang_code)
+        if not lang:
+            lang = lang_model.search([("active", "=", True)], limit=1)
+        if not lang:
+            raise UserError(self.env._("No language is configured for MIS report dates."))
         date_format = lang.date_format
         return datetime.datetime.strftime(fields.Date.from_string(date), date_format)
+
+    def get_export_period_description(self):
+        """Return a concise period description for printed/exported reports."""
+        self.ensure_one()
+        periods = self.period_ids.filtered(lambda period: period.date_from and period.date_to)
+        ranges = []
+        for period in periods:
+            date_range = (
+                self._format_date(period.date_from),
+                self._format_date(period.date_to),
+            )
+            if date_range not in [item[0] for item in ranges]:
+                ranges.append((date_range, period.name))
+        if not ranges:
+            return ""
+        if len(ranges) == 1:
+            date_from, date_to = ranges[0][0]
+            return self.env._(
+                "For the period %(date_from)s to %(date_to)s",
+                date_from=date_from,
+                date_to=date_to,
+            )
+        descriptions = [
+            self.env._(
+                "%(name)s: %(date_from)s to %(date_to)s",
+                name=name,
+                date_from=date_range[0],
+                date_to=date_range[1],
+            )
+            for date_range, name in ranges
+        ]
+        return self.env._("Periods: %(periods)s", periods="; ".join(descriptions))
 
     @api.depends("date_from")
     def _compute_comparison_mode(self):
@@ -702,9 +762,13 @@ class MisReportInstance(models.Model):
         for record in self:
             if not record.comparison_mode:
                 if not record.date_from:
-                    record.date_from = fields.Date.context_today(self)
+                    record.date_from = fields.Date.context_today(
+                        record.with_context(tz=record.env.context.get("tz") or "UTC")
+                    )
                 if not record.date_to:
-                    record.date_to = fields.Date.context_today(self)
+                    record.date_to = fields.Date.context_today(
+                        record.with_context(tz=record.env.context.get("tz") or "UTC")
+                    )
                 record.period_ids.unlink()
                 record.write({"period_ids": [(0, 0, {"name": "Default"})]})
             else:
@@ -790,15 +854,33 @@ class MisReportInstance(models.Model):
 
     def print_pdf(self):
         self.ensure_one()
-        return (
-            self.env.ref("mis_builder.qweb_pdf_export")
-            .with_context(landscape=self.landscape_pdf)
-            .report_action(self, data=dict(dummy=True))  # required to propagate context
-        )
+        report = self.env.ref("mis_builder.qweb_pdf_export", raise_if_not_found=False)
+        if not report or not report.exists():
+            report = self.env["ir.actions.report"].search(
+                [
+                    ("report_name", "=", "mis_builder.mis_report_instance_qweb"),
+                    ("model", "=", "mis.report.instance"),
+                ],
+                limit=1,
+            )
+        report.invalidate_recordset(["report_type", "report_name", "model"])
+        return report.with_context(landscape=self.landscape_pdf).report_action(
+            self, data=dict(dummy=True)
+        )  # required to propagate context
 
     def export_xls(self):
         self.ensure_one()
-        return self.env.ref("mis_builder.xls_export").report_action(
+        report = self.env.ref("mis_builder.xls_export", raise_if_not_found=False)
+        if not report or not report.exists():
+            report = self.env["ir.actions.report"].search(
+                [
+                    ("report_name", "=", "mis_builder.mis_report_instance_xlsx"),
+                    ("model", "=", "mis.report.instance"),
+                ],
+                limit=1,
+            )
+        report.invalidate_recordset(["report_type", "report_name", "model"])
+        return report.report_action(
             self, data=dict(dummy=True)
         )  # required to propagate context
 
@@ -979,7 +1061,7 @@ class MisReportInstance(models.Model):
                 period.date_to,
                 account_id,
             )
-            domain.extend(period._get_additional_move_line_filter())
+            domain = list(Domain(domain) + Domain(period._get_additional_move_line_filter()))
             views = self._get_drilldown_model_views(period.source_aml_model_name)
             return {
                 "name": self._get_drilldown_action_name(arg),
@@ -1003,9 +1085,9 @@ class MisReportInstance(models.Model):
 
         if account_id:
             account = self.env[self.report_id.account_model].browse(account_id)
-            return f"{kpi.description} - {account.display_name} - {period.display_name}"
+            return f"{kpi.description} - {account.display_name} - {period.name}"
         else:
-            return f"{kpi.description} - {period.display_name}"
+            return f"{kpi.description} - {period.name}"
 
     def _get_annotation_context(self):
         """Return the context used to filter annotation linked to this instance."""

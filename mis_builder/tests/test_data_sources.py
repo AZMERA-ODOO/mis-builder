@@ -2,6 +2,7 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import odoo.tests.common as common
+from odoo.tests.common import tagged
 from odoo import Command
 
 from ..models.accounting_none import AccountingNone
@@ -15,6 +16,7 @@ from ..models.mis_report_instance import (
 from .common import assert_matrix
 
 
+@tagged("post_install", "-at_install")
 class TestMisReportInstanceDataSources(common.TransactionCase):
     """Test sum and comparison data source."""
 

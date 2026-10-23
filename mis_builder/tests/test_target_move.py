@@ -1,9 +1,11 @@
 # Copyright 2016 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 
 
+@tagged("post_install", "-at_install")
 class TestMisReportInstance(common.TransactionCase):
     def test_supports_target_move_filter(self):
         self.assertTrue(

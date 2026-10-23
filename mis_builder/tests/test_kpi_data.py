@@ -1,6 +1,7 @@
 # Copyright 2017 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 from odoo_test_helper import FakeModelLoader
 
 from odoo.tests.common import TransactionCase
@@ -8,6 +9,10 @@ from odoo.tests.common import TransactionCase
 from ..models.mis_kpi_data import ACC_AVG, ACC_SUM
 
 
+# Fake-model registration mutates the process-wide Odoo registry. Keep this
+# class out of the ordinary release suite and run it with the dedicated
+# ``mis_fake_model`` tag in an isolated test database.
+@tagged("post_install", "mis_fake_model", "-at_install", "-standard")
 class TestKpiData(TransactionCase):
     @classmethod
     def setUpClass(cls):

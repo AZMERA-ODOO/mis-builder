@@ -152,7 +152,7 @@
         </field>
     </record>
     <record model="ir.actions.act_window" id="mis_report_style_view_action">
-        <field name="name">MIS Report Styles</field>
+        <field name="name">Report Styles</field>
         <field name="view_id" ref="mis_report_style_view_list" />
         <field name="res_model">mis.report.style</field>
         <field name="view_mode">list,form</field>
@@ -161,7 +161,7 @@
     <menuitem
         id="mis_report_style_view_menu"
         parent="mis_report_conf_menu"
-        name="MIS Report Styles"
+        name="Report Styles"
         action="mis_report_style_view_action"
         sequence="22"
     />

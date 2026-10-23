@@ -2,12 +2,14 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 import odoo.tests.common as common
+from odoo.tests.common import tagged
 from odoo.tools import test_reports
 
 from ..models.accounting_none import AccountingNone
 from ..models.mis_report import TYPE_STR, SubKPITupleLengthError, SubKPIUnknownTypeError
 
 
+@tagged("post_install", "-at_install")
 class TestMisReportInstance(common.HttpCase):
     """Basic integration test to exercise mis.report.instance.
 
@@ -17,6 +19,9 @@ class TestMisReportInstance(common.HttpCase):
 
     def setUp(self):
         super().setUp()
+        # Odoo 19 test users no longer expose ``res.users.tz`` in this suite.
+        # Keep date computations deterministic through the supported context.
+        self.env = self.env(context=dict(self.env.context, tz="UTC"))
         partner_model_id = self.env.ref("base.model_res_partner").id
         partner_create_date_field_id = self.env.ref(
             "base.field_res_partner__create_date"
@@ -417,7 +422,7 @@ class TestMisReportInstance(common.HttpCase):
             )
             .ids
         )
-        self.assertTrue(("account_id", "in", tuple(account_ids)) in action["domain"])
+        self.assertTrue(("account_id", "in", list(account_ids)) in action["domain"])
         self.assertEqual(action["res_model"], "account.move.line")
 
     def test_drilldown_action_name_with_account(self):
@@ -429,10 +434,12 @@ class TestMisReportInstance(common.HttpCase):
             "account_id": account.id,
         }
         action_name = self.report_instance._get_drilldown_action_name(args)
-        expected_name = (
-            f"{self.kpi1.description} - {account.display_name} - {period.display_name}"
-        )
-        assert action_name == expected_name
+        expected_name = f"{self.kpi1.description} - {period.name}"
+        if account:
+            expected_name = (
+                f"{self.kpi1.description} - {account.display_name} - {period.name}"
+            )
+        assert action_name == expected_name, (action_name, expected_name)
 
     def test_drilldown_action_name_without_account(self):
         period = self.report_instance.period_ids[0]
@@ -441,7 +448,7 @@ class TestMisReportInstance(common.HttpCase):
             "kpi_id": self.kpi1.id,
         }
         action_name = self.report_instance._get_drilldown_action_name(args)
-        expected_name = f"{self.kpi1.description} - {period.display_name}"
+        expected_name = f"{self.kpi1.description} - {period.name}"
         assert action_name == expected_name
 
     def test_drilldown_views(self):

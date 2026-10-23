@@ -1,17 +1,24 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
+    <record id="mis_report_paperformat_landscape" model="report.paperformat">
+        <field name="name">Custom Reports A4 Landscape</field>
+        <field name="format">A4</field>
+        <field name="orientation">Landscape</field>
+        <field name="margin_top">12</field>
+        <field name="margin_bottom">12</field>
+        <field name="margin_left">10</field>
+        <field name="margin_right">10</field>
+        <field name="header_line" eval="False" />
+        <field name="dpi">90</field>
+    </record>
     <record id="qweb_pdf_export" model="ir.actions.report">
         <field name="name">MIS report instance QWEB PDF report</field>
         <field name="model">mis.report.instance</field>
         <field name="type">ir.actions.report</field>
         <field name="report_name">mis_builder.report_mis_report_instance</field>
         <field name="report_type">qweb-pdf</field>
+        <field name="paperformat_id" ref="mis_builder.mis_report_paperformat_landscape" />
     </record>
-    <!--
-        TODO we use divs with css table layout, but this has drawbacks:
-             (bad layout of first column, no colspan for first header row),
-             consider getting back to a plain HTML table.
-    -->
     <template id="report_mis_report_instance">
         <t t-call="web.html_container">
             <t t-foreach="docs" t-as="o">
@@ -19,8 +26,9 @@
                     <t t-set="matrix" t-value="o._compute_matrix()" />
                     <t t-set="notes" t-value="o.get_notes_by_cell_id()" />
                     <t t-set="style_obj" t-value="o.env['mis.report.style']" />
+                    <t t-set="currency_symbol" t-value="o.query_company_ids[:1].currency_id.symbol" />
                     <div class="page">
-                        <h3>
+                        <h3 class="mis_report_title">
                             <span t-field="o.name" />
                             <span>-</span>
                             <t t-foreach="o.query_company_ids" t-as="company">
@@ -28,8 +36,10 @@
                                 <span t-if="company != o.query_company_ids[-1]">,</span>
                             </t>
                         </h3>
-                        <p>
-                            <div class="mis_report_filers">
+                        <div class="mis_report_filters">
+                            <div class="mis_report_period">
+                                <t t-out="o.get_export_period_description()" />
+                            </div>
                                 <t
                                     t-foreach="o.get_filter_descriptions()"
                                     t-as="filter_description"
@@ -38,63 +48,66 @@
                                         <span t-out="filter_description" />
                                     </div>
                                 </t>
-                            </div>
-                        </p>
-                        <div class="mis_table">
-                            <div class="mis_thead">
-                                <div class="mis_row">
-                                    <div class="mis_cell mis_collabel" />
+                        </div>
+                        <table
+                            class="mis_table"
+                            style="width: 1000px; max-width: none; table-layout: fixed;"
+                        >
+                            <thead class="mis_thead">
+                                <tr class="mis_row">
+                                    <th class="mis_cell mis_collabel mis_rowlabel" />
                                     <t t-foreach="matrix.iter_cols()" t-as="col">
-                                        <div class="mis_cell mis_collabel">
+                                        <th
+                                            class="mis_cell mis_collabel mis_column_header"
+                                            t-att-colspan="col.colspan"
+                                        >
                                             <t t-out="col.label" />
                                             <t t-if="col.description">
                                                 <br />
                                                 <t t-out="col.description" />
                                             </t>
-                                        </div>
-                                        <!-- add empty cells because we have no colspan with css tables -->
-                                        <t
-                                            t-foreach="list(col.iter_subcols())[1:]"
-                                            t-as="subcol"
-                                        >
-                                            <div class="mis_cell mis_collabel" />
-                                        </t>
+                                        </th>
                                     </t>
-                                </div>
-                                <div class="mis_row">
-                                    <div class="mis_cell mis_collabel" />
+                                </tr>
+                                <tr class="mis_row">
+                                    <th class="mis_cell mis_collabel mis_rowlabel" />
                                     <t t-foreach="matrix.iter_subcols()" t-as="subcol">
-                                        <div class="mis_cell mis_collabel">
+                                        <th class="mis_cell mis_collabel mis_column_header">
                                             <t t-out="subcol.label" />
                                             <t t-if="subcol.description">
                                                 <br />
                                                 <t t-out="subcol.description" />
                                             </t>
-                                        </div>
+                                        </th>
                                     </t>
-                                </div>
-                            </div>
-                            <div class="mis_tbody">
+                                </tr>
+                            </thead>
+                            <tbody class="mis_tbody">
                                 <t t-foreach="matrix.iter_rows()" t-as="row">
-                                    <div
+                                    <tr
                                         t-if="not ((row.style_props.hide_empty and row.is_empty()) or row.style_props.hide_always)"
                                         class="mis_row"
                                     >
-                                        <div
+                                        <th
                                             t-att-style="style_obj.to_css_style(row.style_props)"
                                             class="mis_cell mis_rowlabel"
+                                            scope="row"
                                         >
                                             <t t-out="row.label" />
                                             <t t-if="row.description">
                                                 <br />
                                                 <t t-out="row.description" />
                                             </t>
-                                        </div>
+                                        </th>
                                         <t t-foreach="row.iter_cells()" t-as="cell">
-                                            <div
+                                            <td
                                                 t-att-style="cell and style_obj.to_css_style(cell.style_props) or ''"
-                                                class="mis_cell mis_amount"
+                                                t-att-class="'mis_cell mis_amount mis_negative' if cell and cell.val_rendered and cell.val_rendered[0] in '-‑' else 'mis_cell mis_amount'"
                                             >
+                                                <t
+                                                    t-if="cell and cell.val_rendered and cell.val_type == 'num' and currency_symbol"
+                                                    t-out="currency_symbol"
+                                                />
                                                 <t
                                                     t-out="cell and cell.val_rendered or ''"
                                                 />
@@ -106,12 +119,12 @@
                                                         t-out="notes.get(cell.cell_id,{}).get('sequence','')"
                                                     />
                                                 </span>
-                                            </div>
+                                            </td>
                                         </t>
-                                    </div>
+                                    </tr>
                                 </t>
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
                         <!-- Foot notes -->
                         <div class="oe_mis_builder_footnote_div">
                             <table class="oe_mis_builder_footnote_table">

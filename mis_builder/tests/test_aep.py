@@ -5,7 +5,9 @@ import datetime
 import time
 
 import odoo.tests.common as common
+from odoo.tests.common import tagged
 from odoo import Command, fields
+from odoo.fields import Domain
 from odoo.exceptions import UserError
 from odoo.tools.safe_eval import safe_eval
 
@@ -18,6 +20,7 @@ from .common import load_doctests
 load_tests = load_doctests(aep)
 
 
+@tagged("post_install", "-at_install")
 class TestAEP(common.TransactionCase):
     def setUp(self):
         super().setUp()
@@ -402,27 +405,28 @@ class TestAEP(common.TransactionCase):
         expr = "balp[700IN]"
         domain = self.aep.get_aml_domain_for_expr(expr, "2017-01-01", "2017-03-31")
         self.assertEqual(
-            domain,
+            Domain(domain),
+            Domain(
             [
-                ("account_id", "in", (self.account_in.id,)),
-                "&",
+                ("account_id", "in", [self.account_in.id]),
                 ("date", ">=", "2017-01-01"),
                 ("date", "<=", "2017-03-31"),
-            ],
+            ]),
         )
         expr = "debi[700IN] - crdi[400AR]"
         domain = self.aep.get_aml_domain_for_expr(expr, "2017-02-01", "2017-03-31")
         self.assertEqual(
-            domain,
+            Domain(domain),
+            Domain(
             [
                 "|",
                 # debi[700IN]
                 "&",
-                ("account_id", "in", (self.account_in.id,)),
+                ("account_id", "in", [self.account_in.id]),
                 ("debit", "<>", 0.0),
                 # crdi[400AR]
                 "&",
-                ("account_id", "in", (self.account_ar.id,)),
+                ("account_id", "in", [self.account_ar.id]),
                 ("credit", "<>", 0.0),
                 "&",
                 # for P&L accounts, only after fy start
@@ -431,7 +435,7 @@ class TestAEP(common.TransactionCase):
                 ("account_id.include_initial_balance", "=", True),
                 # everything must be before from_date for initial balance
                 ("date", "<", "2017-02-01"),
-            ],
+            ]),
         )
 
     def test_is_domain(self):

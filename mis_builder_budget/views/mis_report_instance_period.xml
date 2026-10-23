@@ -24,6 +24,11 @@
                     invisible="source != 'mis_budget_by_account'"
                     required="source == 'mis_budget_by_account'"
                 />
+                <field
+                    name="source_odoo_budget_id"
+                    invisible="source != 'odoo_budget'"
+                    required="source == 'odoo_budget'"
+                />
             </group>
         </field>
     </record>

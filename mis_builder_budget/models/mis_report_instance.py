@@ -7,6 +7,7 @@ from odoo.fields import Domain
 from odoo.addons.mis_builder.models.accounting_none import AccountingNone
 from odoo.addons.mis_builder.models.expression_evaluator import ExpressionEvaluator
 
+from .mis_budget_odoo import SRC_ODOO_BUDGET
 from .mis_report_instance_period import SRC_MIS_BUDGET, SRC_MIS_BUDGET_BY_ACCOUNT
 
 
@@ -85,6 +86,10 @@ class MisReportInstance(models.Model):
                 aep, kpi_matrix, period, label, description
             )
         elif period.source == SRC_MIS_BUDGET_BY_ACCOUNT:
+            return self._add_column_move_lines(
+                aep, kpi_matrix, period, label, description
+            )
+        elif period.source == SRC_ODOO_BUDGET:
             return self._add_column_move_lines(
                 aep, kpi_matrix, period, label, description
             )

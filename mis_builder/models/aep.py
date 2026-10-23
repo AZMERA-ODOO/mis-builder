@@ -341,7 +341,7 @@ class AccountingExpressionProcessor:
                 aml_domain.append(("debit", "<>", 0.0))
             elif fld_name:
                 aml_domain.append((fld_name, "!=", False))
-            aml_domains.append(expression.normalize_domain(aml_domain))
+            aml_domains.append(Domain(aml_domain))
             if mode not in date_domain_by_mode:
                 date_domain_by_mode[mode] = self.get_aml_domain_for_dates(
                     date_from, date_to, mode
@@ -349,7 +349,7 @@ class AccountingExpressionProcessor:
         assert aml_domains
         # TODO we could do this for more precision:
         #      AND(OR(aml_domains[mode]), date_domain[mode]) for each mode
-        return Domain.OR(aml_domains) + Domain.OR(date_domain_by_mode.values())
+        return list(Domain.OR(aml_domains) + Domain.OR(date_domain_by_mode.values()))
 
     def get_aml_domain_for_dates(self, date_from, date_to, mode):
         if mode == self.MODE_VARIATION:
@@ -384,7 +384,7 @@ class AccountingExpressionProcessor:
                 ("date", "<", fields.Date.to_string(fy_date_from)),
                 ("account_id.include_initial_balance", "=", False),
             ]
-        return expression.normalize_domain(domain)
+        return Domain(domain)
 
     def _get_company_rates(self, date):
         # get exchange rates for each company with its rouding

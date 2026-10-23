@@ -1,14 +1,6 @@
 # Copyright 2025 ACSONE SA/NV
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl).
 
-# SQL_GUARDRAIL_EXCEPTION:
-# ORM limitation: Odoo's model metadata does not provide an idempotent API for
-# declaring this composite PostgreSQL index. Protected invariant: annotation
-# lookups by period, KPI, and sub-KPI remain indexed as report usage grows.
-# Idempotency/retry: init() uses CREATE INDEX IF NOT EXISTS and is safe on
-# install or update reruns. Validation path: the annotation test suite and the
-# repository SQL guardrail checker.
-
 
 from odoo import api, fields, models
 from odoo.exceptions import AccessError
@@ -71,13 +63,9 @@ class MisReportInstanceAnnotation(models.Model):
             .browse(instance_id)
             ._get_annotation_context()
         )
-        matching_annotations = annotations.filtered(
+        annotation = annotations.filtered(
             lambda rec: rec.annotation_context == annotation_context
-        )
-        annotation = next(
-            iter(matching_annotations),
-            self.env["mis.report.instance.annotation"],
-        )
+        )[:1]
         return annotation
 
     @api.model

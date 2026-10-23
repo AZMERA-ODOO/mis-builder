@@ -1,11 +1,13 @@
 # Copyright 2016 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
+from odoo.tests.common import tagged
 import odoo.tests.common as common
 
 from ..models.mis_safe_eval import DataError, NameDataError, mis_safe_eval
 
 
+@tagged("post_install", "-at_install")
 class TestMisSafeEval(common.TransactionCase):
     def test_nominal(self):
         val = mis_safe_eval("a + 1", {"a": 1})

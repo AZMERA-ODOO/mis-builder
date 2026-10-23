@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 from ..models.accounting_none import AccountingNone
 from ..models.data_error import DataError
@@ -16,7 +17,6 @@ _logger = logging.getLogger(__name__)
 
 
 ROW_HEIGHT = 15  # xlsxwriter units
-COL_WIDTH = 0.9  # xlsxwriter units
 MIN_COL_WIDTH = 10  # characters
 MAX_COL_WIDTH = 50  # characters
 
@@ -45,33 +45,96 @@ class MisBuilderXlsx(models.AbstractModel):
             objects[0].name, ", ".join([a.name for a in objects[0].query_company_ids])
         )
         sheet = workbook.add_worksheet(report_name[:31])
+        sheet.hide_gridlines(2)
+        sheet.set_landscape()
+        sheet.fit_to_pages(1, 0)
+        sheet.set_margins(left=0.35, right=0.35, top=0.5, bottom=0.5)
         row_pos = 0
         col_pos = 0
+        columns = list(matrix.iter_cols())
+        subcolumns = list(matrix.iter_subcols())
+        max_col_pos = len(subcolumns)
+        currencies = objects.query_company_ids.mapped("currency_id")
+        currency_symbol = currencies.symbol if len(currencies) == 1 else ""
         # width of the labels column
         label_col_width = MIN_COL_WIDTH
         # {col_pos: max width in characters}
         col_width = defaultdict(lambda: MIN_COL_WIDTH)
 
         # document title
-        bold = workbook.add_format({"bold": True})
-        header_format = workbook.add_format(
-            {"bold": True, "align": "center", "bg_color": "#F0EEEE"}
+        title_format = workbook.add_format(
+            {
+                "bold": True,
+                "font_size": 16,
+                "font_color": "#1F2937",
+                "bottom": 2,
+                "bottom_color": "#374151",
+            }
         )
-        sheet.write(row_pos, 0, report_name, bold)
-        row_pos += 2
+        header_format = workbook.add_format(
+            {
+                "bold": True,
+                "align": "center",
+                "valign": "vcenter",
+                "text_wrap": True,
+                "bg_color": "#374151",
+                "font_color": "#FFFFFF",
+                "border": 1,
+                "border_color": "#D1D5DB",
+            }
+        )
+        subheader_format = workbook.add_format(
+            {
+                "bold": True,
+                "align": "center",
+                "valign": "vcenter",
+                "text_wrap": True,
+                "bg_color": "#E5E7EB",
+                "font_color": "#111827",
+                "border": 1,
+                "border_color": "#D1D5DB",
+            }
+        )
+        filter_format = workbook.add_format(
+            {"font_color": "#4B5563", "italic": True, "font_size": 9}
+        )
+        sheet.merge_range(row_pos, 0, row_pos, max_col_pos, report_name, title_format)
+        sheet.set_row(row_pos, 24)
+        row_pos += 1
+
+        period_description = objects.get_export_period_description()
+        if period_description:
+            sheet.merge_range(
+                row_pos,
+                0,
+                row_pos,
+                max_col_pos,
+                period_description,
+                filter_format,
+            )
+            row_pos += 1
+        row_pos += 1
 
         # filters
         filter_descriptions = objects.get_filter_descriptions()
         if filter_descriptions:
             for filter_description in objects.get_filter_descriptions():
-                sheet.write(row_pos, 0, filter_description)
+                sheet.merge_range(
+                    row_pos,
+                    0,
+                    row_pos,
+                    max_col_pos,
+                    filter_description,
+                    filter_format,
+                )
                 row_pos += 1
             row_pos += 1
 
         # column headers
+        header_start = row_pos
         sheet.write(row_pos, 0, "", header_format)
         col_pos = 1
-        for col in matrix.iter_cols():
+        for col in columns:
             label = col.label
             if col.description:
                 label += "\n" + col.description
@@ -93,15 +156,15 @@ class MisBuilderXlsx(models.AbstractModel):
             col_pos += col.colspan
         row_pos += 1
 
-        # sub column headers
-        sheet.write(row_pos, 0, "", header_format)
+        # Subcolumn headers
+        sheet.write(row_pos, 0, "", subheader_format)
         col_pos = 1
-        for subcol in matrix.iter_subcols():
+        for subcol in subcolumns:
             label = subcol.label
             if subcol.description:
                 label += "\n" + subcol.description
                 sheet.set_row(row_pos, ROW_HEIGHT * 2)
-            sheet.write(row_pos, col_pos, label, header_format)
+            sheet.write(row_pos, col_pos, label, subheader_format)
             col_width[col_pos] = max(
                 col_width[col_pos],
                 len(subcol.label or ""),
@@ -109,6 +172,8 @@ class MisBuilderXlsx(models.AbstractModel):
             )
             col_pos += 1
         row_pos += 1
+        sheet.freeze_panes(row_pos, 1)
+        sheet.repeat_rows(header_start, row_pos - 1)
 
         # rows
         for row in matrix.iter_rows():
@@ -117,6 +182,7 @@ class MisBuilderXlsx(models.AbstractModel):
             ) or row.style_props.hide_always:
                 continue
             row_xlsx_style = style_obj.to_xlsx_style(TYPE_STR, row.style_props)
+            row_xlsx_style["text_wrap"] = True
             row_format = workbook.add_format(row_xlsx_style)
             col_pos = 0
             label = row.label
@@ -137,6 +203,20 @@ class MisBuilderXlsx(models.AbstractModel):
                 cell_xlsx_style = style_obj.to_xlsx_style(
                     cell.val_type, cell.style_props, no_indent=True
                 )
+                if cell.val_type == "num" and not (
+                    cell.style_props.prefix or cell.style_props.suffix
+                ):
+                    decimals = "0" * (cell.style_props.dp or 0)
+                    decimal_part = "." + decimals if decimals else ""
+                    if currency_symbol:
+                        cell_xlsx_style["num_format"] = (
+                            f'"{currency_symbol}"#,##0{decimal_part};'
+                            f'("{currency_symbol}"#,##0{decimal_part});-'
+                        )
+                    else:
+                        cell_xlsx_style["num_format"] = (
+                            f"#,##0{decimal_part};(#,##0{decimal_part});-"
+                        )
                 cell_xlsx_style["align"] = "right"
                 cell_format = workbook.add_format(cell_xlsx_style)
                 if isinstance(cell.val, DataError):
@@ -166,7 +246,12 @@ class MisBuilderXlsx(models.AbstractModel):
             {"italic": True, "font_color": "#202020", "font_size": 9}
         )
         lang_model = self.env["res.lang"]
-        lang = lang_model._lang_get(self.env.user.lang)
+        lang_code = self.env.context.get("lang") or "en_US"
+        lang = lang_model._lang_get(lang_code)
+        if not lang:
+            lang = lang_model.search([("active", "=", True)], limit=1)
+        if not lang:
+            raise UserError(self.env._("No language is configured for MIS report dates."))
 
         now_tz = fields.Datetime.context_timestamp(
             self.env["res.users"], datetime.now()
@@ -176,11 +261,13 @@ class MisBuilderXlsx(models.AbstractModel):
             gen_date=now_tz.strftime(lang.date_format),
             gen_time=now_tz.strftime(lang.time_format),
         )
-        sheet.write(row_pos, 0, create_date, footer_format)
+        sheet.merge_range(row_pos, 0, row_pos, max_col_pos, create_date, footer_format)
 
         # adjust col widths
-        sheet.set_column(0, 0, min(label_col_width, MAX_COL_WIDTH) * COL_WIDTH)
-        data_col_width = min(MAX_COL_WIDTH, max(col_width.values()))
-        min_col_pos = min(col_width.keys())
-        max_col_pos = max(col_width.keys())
-        sheet.set_column(min_col_pos, max_col_pos, data_col_width * COL_WIDTH)
+        sheet.set_column(0, 0, min(label_col_width, MAX_COL_WIDTH))
+        for data_col_pos, width in col_width.items():
+            sheet.set_column(
+                data_col_pos,
+                data_col_pos,
+                min(max(width, MIN_COL_WIDTH), MAX_COL_WIDTH),
+            )

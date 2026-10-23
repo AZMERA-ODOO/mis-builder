@@ -2,11 +2,11 @@
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
 {
-    "name": "MIS Builder",
-    "version": "19.0.1.0.1",
+    "name": "Custom Reports",
+    "version": "19.0.1.0.3",
     "category": "Reporting",
     "summary": """
-        Build 'Management Information System' Reports and Dashboards
+        Build custom management reports and dashboards
     """,
     "author": "ACSONE SA/NV, " "Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/mis-builder",

@@ -73,7 +73,9 @@ class ProRataReadGroupMixin(models.AbstractModel):
         """
         date_from = None
         date_to = None
-        assert isinstance(domain, list)
+        # Odoo 19 may pass the normalized domain as a tuple.  The pro-rata
+        # inspection below only needs an iterable of domain terms.
+        domain = list(domain or [])
         for domain_item in domain:
             if isinstance(domain_item, list | tuple):
                 field, op, value = domain_item
