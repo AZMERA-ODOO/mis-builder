@@ -1,7 +1,7 @@
 # Copyright 2017 ACSONE SA/NV (<http://acsone.eu>)
 # License AGPL-3.0 or later (https://www.gnu.org/licenses/agpl.html).
 
-from odoo.tests.common import TransactionCase
+from odoo.tests.common import TransactionCase, tagged
 
 from odoo.addons.mis_builder.models.expression_evaluator import ExpressionEvaluator
 from odoo.addons.mis_builder.tests.common import assert_matrix
@@ -9,18 +9,19 @@ from odoo.addons.mis_builder.tests.common import assert_matrix
 from ..models.mis_report_instance_period import SRC_MIS_BUDGET_BY_ACCOUNT
 
 
+@tagged("-at_install", "post_install")
 class TestMisBudgetByAccount(TransactionCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        # create account
-        account = cls.env["account.account"].create(
-            dict(
-                name="test account",
-                code="1",
-                account_type="income",
-            )
+        # Reuse a chart account: Enterprise's computed create_asset field can
+        # make a direct account INSERT fail before its value is populated.
+        company = cls.env.ref("base.main_company")
+        account = cls.env["account.account"].with_company(company).search(
+            [("account_type", "=", "income"), ("company_ids", "in", company.ids)],
+            limit=1,
         )
+        assert account, "The installed chart must provide an income account"
         # create report
         cls.report = cls.env["mis.report"].create(dict(name="test report"))
         cls.kpi1 = cls.env["mis.report.kpi"].create(
