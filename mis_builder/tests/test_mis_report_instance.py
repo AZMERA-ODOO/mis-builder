@@ -19,6 +19,9 @@ class TestMisReportInstance(common.HttpCase):
 
     def setUp(self):
         super().setUp()
+        # Odoo 19 test users no longer expose ``res.users.tz`` in this suite.
+        # Keep date computations deterministic through the supported context.
+        self.env = self.env(context=dict(self.env.context, tz="UTC"))
         partner_model_id = self.env.ref("base.model_res_partner").id
         partner_create_date_field_id = self.env.ref(
             "base.field_res_partner__create_date"

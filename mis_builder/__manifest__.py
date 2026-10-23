@@ -3,7 +3,7 @@
 
 {
     "name": "Custom Reports",
-    "version": "19.0.1.0.2",
+    "version": "19.0.1.0.3",
     "category": "Reporting",
     "summary": """
         Build custom management reports and dashboards

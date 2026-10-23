@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 
 from odoo import api, fields, models
+from odoo.exceptions import UserError
 
 from ..models.accounting_none import AccountingNone
 from ..models.data_error import DataError
@@ -245,7 +246,12 @@ class MisBuilderXlsx(models.AbstractModel):
             {"italic": True, "font_color": "#202020", "font_size": 9}
         )
         lang_model = self.env["res.lang"]
-        lang = lang_model._lang_get(self.env.user.lang)
+        lang_code = self.env.context.get("lang") or "en_US"
+        lang = lang_model._lang_get(lang_code)
+        if not lang:
+            lang = lang_model.search([("active", "=", True)], limit=1)
+        if not lang:
+            raise UserError(self.env._("No language is configured for MIS report dates."))
 
         now_tz = fields.Datetime.context_timestamp(
             self.env["res.users"], datetime.now()

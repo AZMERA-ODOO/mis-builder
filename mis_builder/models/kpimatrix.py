@@ -142,7 +142,12 @@ class KpiMatrix:
     def __init__(self, env, multi_company=False, account_model="account.account"):
         # cache language id for faster rendering
         lang_model = env["res.lang"]
-        self.lang = lang_model._lang_get(env.user.lang)
+        lang_code = env.context.get("lang") or "en_US"
+        self.lang = lang_model._lang_get(lang_code)
+        if not self.lang:
+            self.lang = lang_model.search([("active", "=", True)], limit=1)
+        if not self.lang:
+            raise UserError(env._("No language is configured for MIS report values."))
         self._style_model = env["mis.report.style"]
         self._account_model = env[account_model]
         # data structures

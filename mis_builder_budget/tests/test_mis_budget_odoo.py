@@ -14,7 +14,17 @@ class TestMisBudgetOdoo(TransactionCase):
             limit=1,
         )
         if not cls.account:
-            raise AssertionError("The test database must provide an expense account.")
+            # ``--without-demo=all`` databases do not have the chart of
+            # accounts demo records, but the Odoo budget source only needs a
+            # valid expense account to exercise the MIS adapter.
+            cls.account = cls.env["account.account"].create(
+                {
+                    "name": "MIS Test Expense",
+                    "code": "999901",
+                    "account_type": "expense",
+                    "company_ids": [(6, 0, [cls.env.company.id])],
+                }
+            )
         cls.plan = cls.env["account.analytic.plan"].create({"name": "MIS Budget Plan"})
         cls.analytic = cls.env["account.analytic.account"].create(
             {
