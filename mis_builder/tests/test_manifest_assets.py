@@ -7,7 +7,7 @@ from odoo.modules.module import get_manifest, get_module_path
 from odoo.tests.common import TransactionCase, tagged
 
 
-@tagged("mis_builder", "post_install")
+@tagged("mis_builder", "post_install", "-at_install")
 class TestMisBuilderManifestAssets(TransactionCase):
     def test_manifest_uses_existing_owl_template_asset(self):
         manifest = get_manifest("mis_builder")
